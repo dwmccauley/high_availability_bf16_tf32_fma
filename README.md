@@ -1,7 +1,7 @@
 # high_availability_bf16_tf32_fma
 A High Availability BF16 / TF32 Fused Multiplier-Adder
 
-This SystemVerilog hardware design project currently only includes the unsigned 8-bit multiplier with residue-3 prediction, which is the core of this high-availbility FMA. More to come.
+This SystemVerilog hardware design project currently only includes the unsigned 8-bit multiplier with residue-3 prediction, which is the core of this high-availability FMA. More to come.
 
 This multiplier uses a Wallace Tree for partial-product reduction with a carry-lookahead final adder stage.
 
