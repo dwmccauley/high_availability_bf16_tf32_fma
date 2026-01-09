@@ -17,7 +17,8 @@ yosys -p  "read_verilog -sv  src/full_adder.sv  src/half_adder.sv src/cla_adder_
 # Documentation:
 docs/HighAvailability_BF16_TF32_FMA.pdf
 
-License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+# License: 
+This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
 https://ohwr.org/cern_ohl_p_v2.pdf
 
 Don McCauley TechAnalytics LLC January 9, 2026
