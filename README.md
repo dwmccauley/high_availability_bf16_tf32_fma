@@ -11,7 +11,7 @@ iverilog -g2012 -Wall  -pfileline=1  src/half_adder.sv src/full_adder.sv src/cla
 # To simulate using vvp:
 vvp build/unsigned_multiplier_8x8_sim
 
-# To synthesis using Yosys:
+# To synthesize using Yosys:
 yosys -p  "read_verilog -sv  src/full_adder.sv  src/half_adder.sv src/cla_adder_8.sv src/mod3_adder.sv src/mod3_multiplier.sv src/residue3_gen.sv src/unsigned_multiplier_8x8.sv; hierarchy -check -top unsigned_multiplier_8x8; synth; techmap; abc ;"
 
 # Documentation:
