@@ -10,14 +10,19 @@
 //
 // License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
 //     https://ohwr.org/cern_ohl_p_v2.pdf
+//
+// Design Note: ~13 logic levels in ASAP7
 //===================================================================
 `timescale 1ns/1ps
+`define RESIDUE3
 
 module unsigned_multiplier_8x8 (
     input  logic [7:0]  a,          // multiplicand
     input  logic [7:0]  b,          // multiplier
-    output logic [15:0] product,
-    output logic [1:0] residue 
+`ifdef RESIDUE3
+    output logic [1:0]  residue_predict,    // predicted Residue-3 for product
+`endif
+    output logic [15:0] product
 );
 
     // ----------------------------------------------------------------
@@ -112,7 +117,7 @@ module unsigned_multiplier_8x8 (
     // ---------- Column 8 ----------
     // Bits: pp[7][1], pp[6][2], pp[5][3], pp[4][4], pp[3][5], pp[2][6], pp[1][7]
     //  -> six FA
-    logic s8_0, c8_0, s8_1, c8_1, s8_2, c8_2, s8_3, c8_3, s8_4, c8_4, s8_5, c8_5, s8_6, c8_6;
+    logic s8_0, c8_0, s8_1, c8_1, s8_2, c8_2, s8_3, c8_3, s8_4, c8_4, s8_5, c8_5;
     `FA fa8_0 ( .a(pp[7][1]), .b(pp[6][2]), .cin(c7_0), .sum(s8_0), .cout(c8_0) );
     `FA fa8_1 ( .a(s8_0), .b(pp[5][3]), .cin(c7_1), .sum(s8_1), .cout(c8_1) );
     `FA fa8_2 ( .a(s8_1), .b(pp[4][4]), .cin(c7_2), .sum(s8_2), .cout(c8_2) );
@@ -172,14 +177,14 @@ module unsigned_multiplier_8x8 (
     logic [7:0] low_product;
     logic [15:8] sum_row;
     logic [15:8] carry_row;
-    assign low_product[0]  = s0_0;                     // column 0
-    assign low_product[1]  = s1_0;                     // column 1
-    assign low_product[2]  = s2_1;                     // column 2
-    assign low_product[3]  = s3_2;                     // column 3
-    assign low_product[4]  = s4_3;                     // column 4
-    assign low_product[5]  = s5_4;                     // column 5
-    assign low_product[6]  = s6_5;                     // column 6
-    assign low_product[7]  = s7_6;                     // column 7
+    assign low_product[0] = s0_0;                  // column 0
+    assign low_product[1] = s1_0;                  // column 1
+    assign low_product[2] = s2_1;                  // column 2
+    assign low_product[3] = s3_2;                  // column 3
+    assign low_product[4] = s4_3;                  // column 4
+    assign low_product[5] = s5_4;                  // column 5
+    assign low_product[6] = s6_5;                  // column 6
+    assign low_product[7] = s7_6;                  // column 7
     assign sum_row[8]  = s8_5;                     // column 8
     assign sum_row[9]  = s9_4;                     // column 9
     assign sum_row[10] = s10_3;                    // column 10
@@ -203,27 +208,30 @@ module unsigned_multiplier_8x8 (
     // 4) Final Carry‑Look‑Ahead addition (sum_row + carry_row) 
     // for high-order product bits
     // ----------------------------------------------------------------
-    wire [7:0] high_product;   
+    logic [7:0] high_product;   
+    logic unused_cout; 
 
     cla_adder_8 cla (
         .a   (sum_row[15:8]),
         .b   (carry_row[15:8]),
         .cin (1'b0),          // No external carry‑in for a multiplier
         .sum (high_product),
-        .cout()   // product already 16‑bit, overflow would be dropped
+        .cout(unused_cout)   // product already 16‑bit, overflow would be dropped
     );
     assign product[15:0] = { high_product[7:0], low_product[7:0] };
 
+`ifdef RESIDUE3
     // ----------------------------------------------------------------
     // 5) Residue-3 prediction for the product
     // ----------------------------------------------------------------
     logic [1:0] a_res;
     logic [1:0] b_res;
 
-    residue3_gen gen_a_res ( .data_in(a[7:0]), .residue(a_res[1:0]) );
-    residue3_gen gen_b_res ( .data_in(b[7:0]), .residue(b_res[1:0]) );
+    residue3_gen #(.WIDTH(8)) gen_a_res ( .data_in(a[7:0]), .residue(a_res[1:0]) );
+    residue3_gen #(.WIDTH(8)) gen_b_res ( .data_in(b[7:0]), .residue(b_res[1:0]) );
 
-    mod3_multiplier gen_res ( .a(a_res[1:0]), .b(b_res[1:0]), .product(residue[1:0]) );
+    mod3_multiplier gen_res ( .a(a_res[1:0]), .b(b_res[1:0]), .product(residue_predict[1:0]) );
+`endif
 
     `undef HA
     `undef FA

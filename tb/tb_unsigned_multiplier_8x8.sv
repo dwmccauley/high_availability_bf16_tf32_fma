@@ -4,12 +4,13 @@
 //              against the built‑in '*' operator for a set of vectors.
 //===================================================================
 `timescale 1ns/1ps
+`define RESIDUE3
 
 module tb_unsigned_multiplier_8x8;
     // DUT signals
     logic  [7:0] a, b;
     logic [15:0] product;
-    logic [1:0] residue;
+    logic [1:0] residue_predict;
 
     // DUT instantiation
     unsigned_multiplier_8x8 dut (.*); // connects a,b,product,residue
@@ -26,7 +27,7 @@ module tb_unsigned_multiplier_8x8;
         init = 1'b1;
         a = '0;
         b = '0;
-        #0;
+        #0.1ns;
         init = 1'b0;
     end
 
@@ -34,19 +35,19 @@ module tb_unsigned_multiplier_8x8;
     // 1) Simple corner cases
     // ---------------------------------------------------------------
     initial begin : simple
-        #10
+        #0.1ns
         $display("\n=== Corner‑case test vectors ===");
-        a = 8'd0; b = 8'd0;   #0 check();
-        a = 8'd0; b = 8'd55;  #1 check();
-        a = 8'd127; b = 8'd0; #1 check();
-        a = 8'd2; b = 8'd7; #1 check();
-        a = 8'd8; b = 8'd2; #1 check();
-        a = 8'd15; b = 8'd15; #1 check();
-        a = 8'd16; b = 8'd16; #1 check();
-        a = 8'd31; b = 8'd31; #1 check();
-        a = 8'd255; b = 8'd1; #1 check();
-        a = 8'd255; b = 8'd255; #1 check();
-        a = 8'd123; b = 8'd45; #1 check();
+        a = 8'd0; b = 8'd0;   #0.1ns check();
+        a = 8'd0; b = 8'd55;  #0.1ns check();
+        a = 8'd127; b = 8'd0; #0.1ns check();
+        a = 8'd2; b = 8'd7; #0.1ns check();
+        a = 8'd8; b = 8'd2; #0.1ns check();
+        a = 8'd15; b = 8'd15; #0.1ns check();
+        a = 8'd16; b = 8'd16; #0.1ns check();
+        a = 8'd31; b = 8'd31; #0.1ns check();
+        a = 8'd255; b = 8'd1; #0.1ns check();
+        a = 8'd255; b = 8'd255; #0.1ns check();
+        a = 8'd123; b = 8'd45; #0.1ns check();
     end : simple
 
     // ---------------------------------------------------------------
@@ -59,7 +60,7 @@ module tb_unsigned_multiplier_8x8;
         for (i = 0; i < 100; i = i + 1) begin
             a = $random(seed);
             b = $random(seed);
-            #1 check();
+            #0.1ns check();
         end
         if (fail == 0) begin
             $display("\nAll %0d tests passed.\n", pass);
@@ -81,14 +82,12 @@ module tb_unsigned_multiplier_8x8;
             for (j = 0; j < 256; j = j + 1) begin
                 a = i;
                 b = j;
-                #1 check();
+                #0.1ns check();
             end
         end
         if (fail == 0) begin
             $display("\nAll %0d tests passed.\n", pass);
-        end
-        else
-        begin
+        end else begin
             $display("\n%0d tests passed; %0d tests failed.\n", pass, fail);
         end
         $finish;
@@ -101,12 +100,12 @@ module tb_unsigned_multiplier_8x8;
         begin
             expected = a * b;   // built‑in multiplication (reference)
             expected_residue = (a * b) % 3;
-            if ( (product !== expected) || (residue !== expected_residue) ) begin
+            if ( (product !== expected) || (residue_predict !== expected_residue) ) begin
                 fail=fail+1;
-                $display("FAIL: %0d * %0d = %0h (exp %0h). Residue %0b (exp %0b)", a, b, product, expected, residue, expected_residue);
+                $display("FAIL: %0d * %0d = %0h (exp %0h). Residue %0b (exp %0b)", a, b, product, expected, residue_predict, expected_residue);
             end else begin
                 pass=pass+1;
-//                $display("PASS: %0d * %0d = %0h. Residue %0b", a, b, product, residue);
+//                $display("PASS: %0d * %0d = %0h. Residue %0b", a, b, product, residue_predict);
             end
         end
     endtask
