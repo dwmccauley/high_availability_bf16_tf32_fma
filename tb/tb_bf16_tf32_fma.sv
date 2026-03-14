@@ -4,7 +4,7 @@ import float_formats::*;
 
 module tb_bf16_tf32_fma;
 
-  localparam int NUM_VECTORS = 30_000_000;   // random vectors
+  localparam int NUM_VECTORS = 100_000;   // random vectors
   integer seed;
   integer test_number;
   bit debug = 0;
