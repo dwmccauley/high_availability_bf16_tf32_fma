@@ -3,6 +3,9 @@
 //
 // File: mod3_multiplier.sv
 // Description: 2-bit modulo-3 multiplier 
+//
+// License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+//     https://ohwr.org/cern_ohl_p_v2.pdf
 //===================================================================
 `timescale 1ns/1ps
 module mod3_multiplier(

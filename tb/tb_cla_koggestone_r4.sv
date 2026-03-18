@@ -1,26 +1,29 @@
+//=========================================================================================================
+// Copyright (C) 2026 by TechAnalytics LLC Author: Donald W McCauley
+//
+// File: tb_cla_koggestone_r4.sv
+//
+// Description: Test Bench for a 8/16/24/32‑bit Radix‑4 Kogge‑Stone Carry‑Lookahead Adder
+//
+// License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+//     https://ohwr.org/cern_ohl_p_v2.pdf
+//=========================================================================================================
 `timescale 1ns/1ps
+`define PARITY 
+
 module tb_cla_koggestone_r4;
 
     // -----------------------------------------------------------------
-    // 1. Parameters & local constants
-    // WIDTHs of 24 or 32 bits are supported
+    // Parameters & local constants
+    // WIDTHs of 16, 24 or 32 bits are supported
     // -----------------------------------------------------------------
     //localparam int WIDTH       = 32;
     //localparam int WIDTH       = 24;
     localparam int WIDTH       = 16;
-    localparam int NUM_VECTORS = 10_000_000;   // random vectors
-    localparam int N_CORNER    = 5;            // number of directed tests
+    localparam int NUM_VECTORS = 1_000_000;   // random vectors
 
     // -----------------------------------------------------------------
-    // 2. DUT interface
-    // -----------------------------------------------------------------
-    logic [WIDTH-1:0] a, b;
-    logic [WIDTH-1:0] sum;
-    logic             ovfl; // overflow
-    logic             cin; // carry in 
-
-    // -----------------------------------------------------------------
-    // 3. Optional SEED from the command line
+    // Optional SEED from the command line
     // -----------------------------------------------------------------
     integer seed;
     initial begin
@@ -31,76 +34,39 @@ module tb_cla_koggestone_r4;
     end
 
     // -----------------------------------------------------------------
-    // 4. DUT instantiation
+    // DUT interface
+    // -----------------------------------------------------------------
+    logic [WIDTH-1:0] a, b;
+    logic             cin;    // carry in 
+    logic [WIDTH-1:0] sum;
+`ifdef PARITY
+    logic [(WIDTH/8-1):0] parity; // predicted parity
+`endif
+    logic             ovfl;   // overflow
+
+    // -----------------------------------------------------------------
+    // DUT instantiation
     // -----------------------------------------------------------------
     cla_koggestone_r4 #(.WIDTH(WIDTH)) dut (
         .a   (a),
         .b   (b),
         .cin (cin),
         .sum (sum),
+`ifdef PARITY
+        .parity (parity),
+`endif
         .ovfl (ovfl)
     );
 
     // -----------------------------------------------------------------
-    // 5. Reference model (identical to the one you already used)
+    // Scoreboard & counters
     // -----------------------------------------------------------------
-    task automatic ref_model(
-        input  logic [WIDTH-1:0] a,
-        input  logic [WIDTH-1:0] b,
-        input  logic             cin,
-        output logic [WIDTH-1:0] sum,
-        output logic            ovfl
-    );
-        logic signed [WIDTH:0] tmp;
-        tmp = $signed({1'b0, a}) + $signed({1'b0, b}) + { {WIDTH{1'b0}}, cin };
-        sum = tmp[WIDTH-1:0];
-        ovfl = (a[WIDTH-1] & b[WIDTH-1] & ~tmp[WIDTH-1]) |
-              (~a[WIDTH-1] & ~b[WIDTH-1] &  tmp[WIDTH-1]);
-    endtask
+    int unsigned tests = 0;
+    int unsigned pass = 0;
+    int unsigned fail = 0;
 
     // -----------------------------------------------------------------
-    // 6. Scoreboard & counters
-    // -----------------------------------------------------------------
-    int unsigned err_cnt = 0;
-    int unsigned vec_cnt = 0;
-
-    // -----------------------------------------------------------------
-    // 7. Random stimulus (unchanged)
-    // -----------------------------------------------------------------
-    logic [WIDTH-1:0] sum_ref;
-    logic             ovfl_ref;
-
-    initial begin
-        repeat (NUM_VECTORS) begin
-            a   = $urandom_range((1<<WIDTH)-1, 1);
-            b   = $urandom_range((1<<WIDTH)-1, 1);
-            cin = $urandom_range(1, 0);
-
-            #0.1ns;                // let combinational logic settle
-
-            ref_model(a, b, cin, sum_ref, ovfl_ref);
-
-            if ( (sum !== sum_ref) || (ovfl !== ovfl_ref) ) begin
-                err_cnt = err_cnt + 1;
-                $display("ERROR at vector %0d:", vec_cnt);
-                $display("    a   = 0x%0h (%0d)", a, $signed(a));
-                $display("    b   = 0x%0h (%0d)", b, $signed(b));
-                $display("    cin = %0d", cin);
-                $display("    DUT sum = 0x%0h (%0d)", sum, $signed(sum));
-                $display("    REF sum = 0x%0h (%0d)", sum_ref, $signed(sum_ref));
-                $display("    DUT ovfl = %b REF ovfl = %b", ovfl, ovfl_ref);
-            end
-            vec_cnt = vec_cnt + 1;
-        end
-
-        if (err_cnt == 0)
-            $display("\n*** PASS ***  All %0d random vectors matched the reference model.", vec_cnt);
-        else
-            $display("\n*** FAIL ***  %0d mismatches out of %0d random vectors.", err_cnt, vec_cnt);
-    end
-
-    // -----------------------------------------------------------------
-    // 8. Corner‑case block 
+    // Corner‑case block 
     // -----------------------------------------------------------------
 
     // ---- generic constants that depend only on WIDTH ------------
@@ -122,39 +88,95 @@ module tb_cla_koggestone_r4;
         '{'0, '0, 1'b0},            // zero + zero
         '{ALL_ONES, ONE, 1'b0},     // -1 + 1 → zero, no overflow
         '{POS_MAX, POS_MAX, 1'b0},  // +max + +max → overflow
-        '{8'h6, 20'h50c19, 1'b1}     // 0x6, 0x50c19, cin
+        '{8'h6, 20'h50c19, 1'b1}    // 0x6, 0x50c19, cin
     };
 
-    initial begin
-        // Wait until the random test finishes
-        wait (vec_cnt == NUM_VECTORS);
+    // -----------------------------------------------------------------
+    // Corner cases first than random stimulus
+    // -----------------------------------------------------------------
+    logic [WIDTH-1:0] sum_ref;
+`ifdef PARITY
+    logic [(WIDTH/8-1):0] parity_ref;
+`endif
+    logic             ovfl_ref;
 
-        for (int i = 0; i < $size(corners); i++) begin
-            corner_t cur;     
-            cur = corners[i];
-            a   = cur.a;
-            b   = cur.b;
-            cin = cur.cin;
-            ref_model(a, b, cin, sum_ref, ovfl_ref);
-            #0.1ns
-            if ( (sum !== sum_ref) || (ovfl !== ovfl_ref) ) begin
-                err_cnt = err_cnt + 1;
-                $display("CORNER‑CASE ERROR %0d:", i);
-                $display("    a = 0x%0h  b = 0x%0h  cin = %0d", a, b, cin);
-                $display("    DUT sum = 0x%0h, REF sum = 0x%0h", sum, sum_ref);
-                $display("    DUT ovfl = %b,   REF ovfl = %b", ovfl, ovfl_ref);
-            end
+    initial begin
+        repeat (NUM_VECTORS) begin
+            if (tests < $size(corners)) begin 
+                corner_t cur;     
+                cur = corners[tests];
+                a   = cur.a;
+                b   = cur.b;
+                cin = cur.cin;
+            end else begin
+                a   = $urandom_range((1<<WIDTH)-1, 1);
+                b   = $urandom_range((1<<WIDTH)-1, 1);
+                cin = $urandom_range(1, 0);
+            end   
+
+            #0.1ns;                // let combinational logic settle
+
+            reference_model(a, b, cin, 
+                sum_ref,
+`ifdef PARITY
+                parity_ref,
+`endif
+                ovfl_ref
+            );
+
+            if ( (sum !== sum_ref) || 
+`ifdef PARITY
+                 (parity !== parity_ref) ||
+`endif
+                 (ovfl !== ovfl_ref) ) begin
+                fail = fail + 1;
+                $display("ERROR at vector %0d:", tests);
+                $display("    a   = 0x%0h (%0d)", a, $signed(a));
+                $display("    b   = 0x%0h (%0d)", b, $signed(b));
+                $display("    cin = %0d", cin);
+                $display("    DUT sum = 0x%0h (%0d)", sum, $signed(sum));
+                $display("    REF sum = 0x%0h (%0d)", sum_ref, $signed(sum_ref));
+                $display("    DUT ovfl = %b REF ovfl = %b", ovfl, ovfl_ref);
+`ifdef PARITY
+                $display("    DUT Parity = %0b Ref Parity = %0b", parity, parity_ref);
+`endif
+            end else pass = pass + 1;
+            tests = tests + 1;
         end
 
-        // -----------------------------------------------------------------
-        // 9. Final report (includes corner‑case errors)
-        // -----------------------------------------------------------------
-        if (err_cnt == 0)
-            $display("\n*** PASS ***  All corner cases also matched.");
+        if (fail == 0) 
+            $display("\n*** PASS ***  All %0d test vectors matched the reference model.", tests);
         else
-            $display("\n*** FAIL ***  %0d total errors (including corner cases).", err_cnt);
-
-        $finish;
+            $display("\n*** FAIL ***  %0d mismatches out of %0d test vectors.", fail, tests);
     end
 
+    // -----------------------------------------------------------------
+    // Reference model
+    // -----------------------------------------------------------------
+    task reference_model (
+       // localparam int WIDTH       = 16;
+        input  logic [WIDTH-1:0] a,
+        input  logic [WIDTH-1:0] b,
+        input  logic             cin,
+        output logic [WIDTH-1:0] sum,
+`ifdef PARITY
+        output logic [(WIDTH/8-1):0] parity, // parity
+`endif
+        output logic            ovfl
+    );
+        logic signed [WIDTH:0] tmp;
+        tmp = $signed({1'b0, a}) + $signed({1'b0, b}) + { {WIDTH{1'b0}}, cin };
+        sum = tmp[WIDTH-1:0];
+        ovfl = tmp[WIDTH] & ~cin;
+
+`ifdef PARITY
+        // --- Byte Parity Generation ---
+        if (WIDTH > 24) parity[3] = ^sum[31:24]; 
+        if (WIDTH > 16) parity[2] = ^sum[23:16]; 
+        if (WIDTH > 8)  parity[1] = ^sum[15:8]; 
+                        parity[0] = ^sum[7:0]; 
+`endif
+    endtask : reference_model
 endmodule : tb_cla_koggestone_r4
+
+

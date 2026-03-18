@@ -1,7 +1,7 @@
 //=========================================================================================================
 // Copyright (C) 2026 by TechAnalytics LLC Author: Donald W McCauley
 //
-// File: cla_adder_8.v
+// File: cla_adder_8.sv
 // Description: 8‑bit Carry‑Look‑Ahead adder (unsigned)
 //
 // License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive

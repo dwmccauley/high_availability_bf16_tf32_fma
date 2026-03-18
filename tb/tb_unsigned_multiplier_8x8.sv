@@ -1,8 +1,13 @@
-//===================================================================
-// File: tb_unsigned_multiplier_8x8.v
-// Description: Simple test‑bench that verifies the 8x8 multiplier
-//              against the built‑in '*' operator for a set of vectors.
-//===================================================================
+//=========================================================================================================
+// Copyright (C) 2026 by TechAnalytics LLC Author: Donald W McCauley
+//
+// File: tb_unsigned_multiplier_8x8.sv
+//
+// Description: Test Bench for an unsigned 8‑bit × 8‑bit multiplier
+//
+// License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+//     https://ohwr.org/cern_ohl_p_v2.pdf
+//=========================================================================================================
 `timescale 1ns/1ps
 `define RESIDUE3
 

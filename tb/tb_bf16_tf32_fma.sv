@@ -1,10 +1,23 @@
+//=========================================================================================================
+// Copyright (C) 2026 by TechAnalytics LLC Author: Donald W McCauley
+//
+// File: tb_bf16_tf32_fma.sv
+//
+// Description: Test Bench for a bfloat16 × bfloat16 + TensorFloat‑32 → TensorFloat‑32 floating-point multiply-adder unit.
+//
+// License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+//     https://ohwr.org/cern_ohl_p_v2.pdf
+//=========================================================================================================
 `timescale 1ns/1ps
 `define RESIDUE3
+`define PARITY
+`undef RESIDUE3_OR_PARITY
+
 import float_formats::*;
 
 module tb_bf16_tf32_fma;
-
   localparam int NUM_VECTORS = 100_000;   // random vectors
+  localparam int ADDER_WIDTH = 16;
   integer seed;
   integer test_number;
   bit debug = 0;
@@ -27,25 +40,35 @@ module tb_bf16_tf32_fma;
   // DUT
   logic [15:0] a_i, b_i;
   logic [31:0] c_i;
+  logic [31:0] product_tf32;
 `ifdef RESIDUE3
+  `define RESIDUE3_OR_PARITY
   logic [1:0] residue_predict;
   logic [1:0] residue;
 `endif
-  logic [31:0] product_tf32;
   logic [31:0] sum_tf32;
+`ifdef PARITY
+  `define RESIDUE3_OR_PARITY
+  logic [(ADDER_WIDTH/8-1):0] parity_predict;
+  logic [(ADDER_WIDTH/8-1):0] parity;
+`endif
   logic [7:0] flags;
 
   ha_bf16_tf32_fma dut (
     .a_bfloat (a_i),
     .b_bfloat (b_i),
     .c_tf32 (c_i),
+    .product_tf32 (product_tf32),
 `ifdef RESIDUE3
     .residue_predict (residue_predict),
     .residue (residue),
 `endif
-    .product_tf32 (product_tf32),
     .result_tf32 (sum_tf32),
-    .flags (flags) // TODO #1a: add prod & result Residue/parity  checks
+`ifdef PARITY
+    .parity_predict (parity_predict),
+    .parity (parity),
+`endif
+    .flags (flags)
   );
 
     integer tests = 0;
@@ -54,6 +77,10 @@ module tb_bf16_tf32_fma;
 `ifdef RESIDUE3
     integer residue_pass = 0;
     integer residue_fail = 0;
+`endif
+`ifdef PARITY
+    integer parity_pass = 0;
+    integer parity_fail = 0;
 `endif
     integer prod_ovfl = 0; // Product exponent >= ~+/-3.4e+38 (or +/-2**128). 
     integer prod_uflw = 0; // Product exponent < ~+/-1.7e-38 (or +/-2**-126). Product fraction set to zero;
@@ -191,23 +218,33 @@ module tb_bf16_tf32_fma;
 `ifdef RESIDUE3
     if ( (residue_predict != residue) ) begin
         residue_fail=residue_fail+1;
-        $display("Residue-3 FAIL: %0d * %0d = %8h. Residue %0b (exp %0b)", a_i, b_i, product_tf32, residue, residue_predict);
+        $display("Product Residue-3 FAIL: %0d * %0d = %8h. Residue %0b (exp %0b)", a_i, b_i, product_tf32, residue, residue_predict);
     end else begin
         residue_pass=residue_pass+1;
-//        $display("Residue-3 PASS: %0d * %0d = %8h. Residue %0b", a_i, b_i, product_tf32, residue);
+//        $display("Product Residue-3 PASS: %0d * %0d = %8h. Residue %0b", a_i, b_i, product_tf32, residue);
+    end
+`endif
+`ifdef PARITY
+    if ( (parity_predict != parity) ) begin
+        parity_fail=parity_fail+1;
+        $display("Result Parity FAIL: %08h + %08h = %08h. Parity %0b (exp %0b)", product_tf32, c_i, sum_tf32, parity, parity_predict);
+    end else begin
+        parity_pass=parity_pass+1;
+//        $display("Result Parity PASS: %08h + %08h = %08h. Parity %0b", product_tf32, c_i, sum_tf32, parity);
     end
 `endif
     end
+
     if (fail == 0) begin
         $display("\nAll %0d FMA tests passed. prod_ovfl %0d prod_sub %0d prod_zero %0d prod_uflw %0d sum_ovfl %0d sum_sub %0d sum_zero %0d sum_uflw %0d\n", pass, prod_ovfl, prod_sub, prod_zero, prod_uflw, sum_ovfl, sum_sub, sum_zero, sum_uflw);
     end else begin
         $display("\n%0d FMA tests passed; %0d tests failed. prod_ovfl %0d prod_sub %0d prod_zero %0d prod_uflw %0d sum_ovfl %0d sum_sub %0d sum_zero %0d sum_uflw %0d\n", pass, fail, prod_ovfl, prod_sub, prod_zero, prod_uflw, sum_ovfl, sum_sub, sum_zero, sum_uflw);
     end
-`ifdef RESIDUE3
-        if (residue_fail == 0) begin
-            $display("\nAll %0d Product Residue-3 tests also passed.\n", residue_pass);
+`ifdef RESIDUE3_OR_PARITY
+        if ( (residue_fail == 0) && (parity_fail == 0) ) begin
+            $display("\nAll %0d Product Residue-3 and %0d Result Parity tests also passed.\n", residue_pass, parity_pass);
         end else begin
-            $display("\n%0d Product Residue-3 tests passed; %0d Product Residue-3 tests failed.\n", residue_pass, residue_fail);
+            $display("\n%0d Product Residue-3 tests passed; %0d Product Residue-3 tests failed. %0d Result Parity tests passed; %0d Result Parity tests failed.\n", residue_pass, residue_fail, parity_pass, parity_fail);
         end
 `endif
     $finish;

@@ -1,7 +1,13 @@
 //===================================================================
-//  float_formats.sv
-//  Helper package that defines bfloat16 and TF32 (TensorFloat‑32)
+// Copyright (C) 2026 by TechAnalytics LLC Author: Donald W McCauley
+//
+//  File: float_formats.sv
+//
+//  Description: Helper package that defines bfloat16 and TF32 (TensorFloat‑32)
 //  and provides packing / unpacking utilities.
+//
+// License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+//     https://ohwr.org/cern_ohl_p_v2.pdf
 //===================================================================
 `default_nettype none
 `timescale 1ns/1ps

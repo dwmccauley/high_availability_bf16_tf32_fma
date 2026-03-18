@@ -10,14 +10,19 @@
 // Design Note: ~8 logic levels in ASAP7
 //=========================================================================================================
 `timescale 1ns/1ps
+`define PARITY 
+
 module cla_koggestone_r4 #(
-    parameter int WIDTH = 16               // must be 16, 24 or 32 for this design
+    parameter int WIDTH = 16             // must be 16, 24 or 32 for this design
 ) (
     input  logic [WIDTH-1:0] a,
     input  logic [WIDTH-1:0] b,
     input  logic             cin,
     output logic [WIDTH-1:0] sum,
-    output logic             ovfl         // unsigned‑overflow flag
+`ifdef PARITY
+    output logic [(WIDTH/8)-1:0] parity,  // predicted parity 
+`endif
+    output logic             ovfl        // unsigned‑overflow flag
 );
     // -----------------------------------------------------------------
     // 0. Sanity check
@@ -26,8 +31,6 @@ module cla_koggestone_r4 #(
         if ((WIDTH != 16) && (WIDTH != 24) && (WIDTH != 32))
             $error("cla_koggestone_r4 is written for WIDTH = 16, 24 or 32 (got %0d)", WIDTH);
     end
-
-    // TODO #1b: add parity checking on adder. Note cin.
 
     // -----------------------------------------------------------------
     // 1. Bit‑wise generate (g) and propagate (p)
@@ -137,13 +140,43 @@ module cla_koggestone_r4 #(
     // -----------------------------------------------------------------
     // 4. Carry vector
     // -----------------------------------------------------------------
-    logic [WIDTH:0] c;         // c[0] … c[32]
+`ifdef PARITY
+    (* DONT_TOUCH = "true" *) logic [WIDTH:0] c; // c[0] … c[32]
+`else
+    logic [WIDTH:0] c; // c[0] … c[32]
+`endif
     assign c[0]  = cin;
     generate
         for (i = 0; i < WIDTH; i++) begin : CARRY_GEN
             assign c[i+1] = G[3][i] | (P[3][i] & cin);
         end
     endgenerate
+
+`ifdef PARITY
+    (* DONT_TOUCH = "true" *) logic [WIDTH:0] c_dup;    // duplicate carry gen logic for parity predict
+    assign c_dup[0]  = cin;
+    generate
+        for (i = 0; i < WIDTH; i++) begin : CARRY_GEN_DUP
+            assign c_dup[i+1] = G[3][i] | (P[3][i] & cin);
+        end
+    endgenerate
+
+    // --- Byte Parity Prediction ---
+    genvar byte_idx;
+    generate
+        for (byte_idx = 0; byte_idx < WIDTH / 8; byte_idx++) begin : gen_byte_parity
+            // Range for the current byte
+            localparam int LOW  = byte_idx * 8;
+            localparam int HIGH = LOW + 7;
+
+            // P_sum = P_a ^ P_b ^ P_carries_in
+            // Carries needed: c_internal[LOW] through c_internal[HIGH]
+            assign parity[byte_idx] = (^a[HIGH:LOW]) ^ 
+                                           (^b[HIGH:LOW]) ^ 
+                                               (^c_dup[HIGH:LOW]);
+        end
+    endgenerate
+`endif
 
     // -----------------------------------------------------------------
     // 5a. Sum and Signed overflow

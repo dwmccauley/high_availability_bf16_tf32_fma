@@ -1,3 +1,13 @@
+//=========================================================================================================
+// Copyright (C) 2026 by TechAnalytics LLC Author: Donald W McCauley
+//
+// File: tb_clz32_opt.sv 
+//
+// Description: Test Bench for a 32‑bit Leading‑Zero Detector 
+//
+// License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
+//     https://ohwr.org/cern_ohl_p_v2.pdf
+//=========================================================================================================
 `timescale 1ns/1ps
 module tb_clz32_opt;
     logic [31:0] data;

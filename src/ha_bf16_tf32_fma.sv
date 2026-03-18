@@ -14,8 +14,11 @@
 `default_nettype none
 `timescale 1ns/1ps
 `define RESIDUE3
+`define PARITY
 
-module ha_bf16_tf32_fma (
+module ha_bf16_tf32_fma #(
+    parameter int ADDER_WIDTH = 16
+) (
     // ----- inputs ----------------------------------------------------
     input  logic [15:0] a_bfloat,   // bfloat16 operand A
     input  logic [15:0] b_bfloat,   // bfloat16 operand B
@@ -27,6 +30,10 @@ module ha_bf16_tf32_fma (
     output logic [1:0]  residue, // actual residue for product
 `endif
     output logic [31:0] result_tf32, // TensorFloat‑32 result
+`ifdef PARITY
+    output logic [(ADDER_WIDTH/8-1):0] parity_predict, // predicted parity for result
+    output logic [(ADDER_WIDTH/8-1):0] parity, // actual parity for result
+`endif
     output logic [7:0] flags
 );
 //    `define DEBUG 
@@ -247,9 +254,33 @@ module ha_bf16_tf32_fma (
 
     logic unsigned [23:8] sum_sc; // 24‑bit unsigned result. 
     logic sum_cout, sum_mant_zero;
-    localparam int ADDER_WIDTH = 16;
-    cla_koggestone_r4 #(.WIDTH(ADDER_WIDTH)) add ( .a (mant_p_true_complement[23:8]), .b (mant_c_true_complement[23:8]), .cin (!add_op), .sum (sum_sc[23:8]), .ovfl (sum_cout) ); // 16-bit unsigned carry-look-ahead adder 
+    cla_koggestone_r4 #(.WIDTH(ADDER_WIDTH)) add ( // 16-bit unsigned carry-look-ahead adder
+        .a (mant_p_true_complement[23:8]), 
+        .b (mant_c_true_complement[23:8]), 
+        .cin (!add_op), 
+        .sum (sum_sc[23:8]), 
+`ifdef PARITY
+        .parity (parity_predict[(ADDER_WIDTH/8-1):0]), 
+`endif
+        .ovfl (sum_cout) 
+    );
     assign sum_mant_zero = (sum_sc[23:8] == 0) & !add_op;
+
+`ifdef PARITY
+    // --- Byte Parity Generation ---
+    genvar byte_idx;
+    generate
+        for (byte_idx = 0; byte_idx < ADDER_WIDTH / 8; byte_idx++) begin : gen_byte_parity
+            // Range for the current byte
+            localparam int LOW  = (byte_idx+1) * 8; // using sum_sc[23:8]
+            localparam int HIGH = LOW + 7;
+
+            // P_sum = P_a ^ P_b ^ P_carries_in
+            // Carries needed: c_internal[LOW] through c_internal[HIGH]
+            assign parity[byte_idx] = (^sum_sc[HIGH:LOW]); 
+        end
+    endgenerate
+`endif
 
 `ifdef DEBUG 
     always @*
