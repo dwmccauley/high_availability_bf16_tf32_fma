@@ -17,10 +17,14 @@ module cla_koggestone_r4 #(
 ) (
     input  logic [WIDTH-1:0] a,
     input  logic [WIDTH-1:0] b,
+`ifdef PARITY
+    input  logic [(WIDTH/8)-1:0] a_pty,  // a parity 
+    input  logic [(WIDTH/8)-1:0] b_pty,  // b parity 
+`endif
     input  logic             cin,
     output logic [WIDTH-1:0] sum,
 `ifdef PARITY
-    output logic [(WIDTH/8)-1:0] parity,  // predicted parity 
+    output logic [(WIDTH/8)-1:0] parity, // predicted sum parity
 `endif
     output logic             ovfl        // unsigned‑overflow flag
 );
@@ -140,11 +144,7 @@ module cla_koggestone_r4 #(
     // -----------------------------------------------------------------
     // 4. Carry vector
     // -----------------------------------------------------------------
-`ifdef PARITY
-    (* DONT_TOUCH = "true" *) logic [WIDTH:0] c; // c[0] … c[32]
-`else
     logic [WIDTH:0] c; // c[0] … c[32]
-`endif
     assign c[0]  = cin;
     generate
         for (i = 0; i < WIDTH; i++) begin : CARRY_GEN
@@ -171,9 +171,7 @@ module cla_koggestone_r4 #(
 
             // P_sum = P_a ^ P_b ^ P_carries_in
             // Carries needed: c_internal[LOW] through c_internal[HIGH]
-            assign parity[byte_idx] = (^a[HIGH:LOW]) ^ 
-                                           (^b[HIGH:LOW]) ^ 
-                                               (^c_dup[HIGH:LOW]);
+            assign parity[byte_idx] = a_pty[byte_idx] ^ b_pty[byte_idx] ^ (^c_dup[HIGH:LOW]);
         end
     endgenerate
 `endif

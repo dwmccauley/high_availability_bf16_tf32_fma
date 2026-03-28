@@ -11,7 +11,7 @@
 // License: This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
 //     https://ohwr.org/cern_ohl_p_v2.pdf
 //
-// Design Note: ~13 logic levels in ASAP7
+// Design Note: Product: ~13-15 logic levels (+ 5-3 inv) in ASAP7. Residue Predict: ~8 logic levels. 
 //===================================================================
 `timescale 1ns/1ps
 `define RESIDUE3
