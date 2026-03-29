@@ -37,10 +37,14 @@ module tb_cla_koggestone_r4;
     // DUT interface
     // -----------------------------------------------------------------
     logic [WIDTH-1:0] a, b;
+`ifdef PARITY
+    logic [(WIDTH/8)-1:0] a_pty;  // a parity 
+    logic [(WIDTH/8)-1:0] b_pty;  // b parity 
+`endif
     logic             cin;    // carry in 
     logic [WIDTH-1:0] sum;
 `ifdef PARITY
-    logic [(WIDTH/8-1):0] parity; // predicted parity
+    logic [(WIDTH/8-1):0] parity; // predicted sum parity
 `endif
     logic             ovfl;   // overflow
 
@@ -50,6 +54,10 @@ module tb_cla_koggestone_r4;
     cla_koggestone_r4 #(.WIDTH(WIDTH)) dut (
         .a   (a),
         .b   (b),
+`ifdef PARITY
+        .a_pty (a_pty),
+        .b_pty (b_pty),
+`endif
         .cin (cin),
         .sum (sum),
 `ifdef PARITY
@@ -113,6 +121,12 @@ module tb_cla_koggestone_r4;
                 b   = $urandom_range((1<<WIDTH)-1, 1);
                 cin = $urandom_range(1, 0);
             end   
+`ifdef PARITY
+            if (WIDTH > 24) begin a_pty[3] = ^a[31:24]; b_pty[3] = ^b[31:24]; end
+            if (WIDTH > 16) begin a_pty[2] = ^a[23:16]; b_pty[2] = ^b[23:16]; end
+            if (WIDTH >  8) begin a_pty[1] = ^a[15:8];  b_pty[1] = ^b[15:8] ; end
+                                  a_pty[0] = ^a[7:0];   b_pty[0] = ^b[7:0];
+`endif
 
             #0.1ns;                // let combinational logic settle
 

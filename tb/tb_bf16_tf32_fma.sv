@@ -16,7 +16,7 @@
 import float_formats::*;
 
 module tb_bf16_tf32_fma;
-  localparam int NUM_VECTORS = 100_000;   // random vectors
+  localparam int NUM_VECTORS = 10_000_000;   // random vectors
   localparam int ADDER_WIDTH = 16;
   integer seed;
   integer test_number;

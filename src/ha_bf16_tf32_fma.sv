@@ -257,6 +257,10 @@ module ha_bf16_tf32_fma #(
     cla_koggestone_r4 #(.WIDTH(ADDER_WIDTH)) add ( // 16-bit unsigned carry-look-ahead adder
         .a (mant_p_true_complement[23:8]), 
         .b (mant_c_true_complement[23:8]), 
+`ifdef PARITY
+        .a_pty ({^mant_p_aligned[23:16],^mant_p_aligned[15:8]}), 
+        .b_pty ({^mant_c_aligned[23:16],^mant_c_aligned[15:8]}), 
+`endif
         .cin (!add_op), 
         .sum (sum_sc[23:8]), 
 `ifdef PARITY
