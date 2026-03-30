@@ -214,7 +214,7 @@ module ha_bf16_tf32_fma #(
     assign c_shift_amount_pl1    = (c_exp_diff_pl1    > {4'b0,PROD_INTERNAL_PREC}) ? PROD_INTERNAL_PREC : c_exp_diff_pl1[3:0];
 
     // Align the two unsigned mantissas
-    always_comb begin
+    always_comb begin                   // TODO #6: consider converting to generate or assign stmt
         prod_shift_amount_mux = (prod_exp_adj) ? prod_shift_amount_pl1 : prod_shift_amount; 
         c_shift_amount_mux    = (prod_exp_adj) ?    c_shift_amount_pl1 : c_shift_amount; 
         mant_p_aligned = (mant_p_sc >> prod_shift_amount_mux) & mant_mask; // product shifted right. unsigned 
@@ -254,7 +254,7 @@ module ha_bf16_tf32_fma #(
 
     logic unsigned [23:8] sum_sc; // 24‑bit unsigned result. 
     logic sum_cout, sum_mant_zero;
-    cla_koggestone_r4 #(.WIDTH(ADDER_WIDTH)) add ( // 16-bit unsigned carry-look-ahead adder
+    cla_adder #(.WIDTH(ADDER_WIDTH)) add ( // 16-bit unsigned carry-look-ahead adder with parity predict
         .a (mant_p_true_complement[23:8]), 
         .b (mant_c_true_complement[23:8]), 
 `ifdef PARITY
@@ -325,7 +325,7 @@ module ha_bf16_tf32_fma #(
     logic [9:0] frac_trunc;
     logic [9:0] frac_rounded;
 
-    always_comb begin                         
+    always_comb begin                          // TODO #6: consider converting to generate or assign stmt
         if (sum_mant_zero) begin 
             final_sign = sum_sign;             // result is positive or negative zero based on sign.                     
             final_exp_raw  = 9'b0;
@@ -341,7 +341,7 @@ module ha_bf16_tf32_fma #(
             // If we have an overflow, we must shift right by 1.
 
             // Normalised 24‑bit mantissa (hidden + 10‑bit fraction + 13 zero bits)
-            if (sum_cout) begin
+            if (sum_cout && add_op) begin
                 mant_norm = {sum_sc[23:8],8'b0} >> 1'b1; // drop low bit 
                 // Exponent will be increased by 1 because we lost a bit of magnitude
                 final_exp_raw = (exp_res_align == EXP_ALL_ONES) ? EXP_ALL_ONES : $signed({2'b0,exp_res_align}) + 1'b1;

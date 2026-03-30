@@ -4,7 +4,7 @@ A High Availability BF16 / TF32 Fused Multiplier-Adder
 This SystemVerilog hardware design project includes a BF16 / TF32 FMA unit along with its constituent sub-units.
 
 # To compile the entire Floating-Point Fused Multipler-Adder unit:
-iverilog -g2012 -Wall  -pfileline=1  src/half_adder.sv src/full_adder.sv src/cla_adder_8.sv src/residue3_gen.sv src/mod3_adder.sv src/mod3_multiplier.sv src/unsigned_multiplier_8x8.sv src/clz32_opt.sv src/cla_koggestone_r4.sv src/ha_bf16_tf32_fma.sv tb/float_formats.sv tb/tb_bf16_tf32_fma.sv -o build/ha_bf16_tf32_fma_sim
+iverilog -g2012 -Wall  -pfileline=1  src/half_adder.sv src/full_adder.sv src/cla_adder_8.sv src/residue3_gen.sv src/mod3_adder.sv src/mod3_multiplier.sv src/unsigned_multiplier_8x8.sv src/clz32_opt.sv src/cla_adder.sv src/ha_bf16_tf32_fma.sv tb/float_formats.sv tb/tb_bf16_tf32_fma.sv -o build/ha_bf16_tf32_fma_sim
 
 # To simulate the entire FMA:
 vvp build/ha_bf16_tf32_fma_sim
@@ -35,4 +35,4 @@ docs/HighAvailability_BF16_TF32_FMA.pdf
 This project is released under the: CERN Open Hardware Licence Version 2 - Permissive
 https://ohwr.org/cern_ohl_p_v2.pdf
 
-Don McCauley TechAnalytics LLC March 13, 2026
+Don McCauley TechAnalytics LLC March 29, 2026
